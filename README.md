@@ -13,13 +13,13 @@ We use the [1000 Genomes Project 30x high-coverage dataset](https://www.internat
 - Parameter sensitivity (minimum segment length, mismatch tolerance, PI_HAT thresholds)
 - Population structure effects comparing admixed vs. homogeneous cohorts
 
-The analysis is limited to chromosome 22 for computational tractability.
+The analysis uses chromosome 22 for computational tractability. PLINK's method-of-moments estimator works on any subset of SNPs, and GERMLINE's segment detection is per-chromosome anyway, so chr22 is a reasonable testbed for both tools.
 
 ## Key Findings
 
-**PLINK** is extremely fast (< 1 second for most cohorts) and classifies parent-child relationships with near-perfect accuracy on the trios cohort (precision=0.987, recall=1.0, F1=0.993). It only outputs summary IBD statistics (PI_HAT, Z0/Z1/Z2) - no segment-level information.
+**PLINK** is extremely fast (< 1 second for most cohorts) and classifies parent-child relationships with near-perfect accuracy on the trios cohort (precision=0.987, recall=1.0, F1=0.993). It only outputs summary IBD statistics (PI_HAT, Z0/Z1/Z2) -- no segment-level information.
 
-**GERMLINE** detects IBD segments with full position and length information. It correctly detects ~98.8% of parent-child pairs when using proportion-based thresholds calibrated for chr22. However, its fixed whole-genome segment-length thresholds completely fail on single-chromosome data (F1=0.01), which is an important limitation to be aware of. GERMLINE is also substantially slower - 28 minutes for the 1,793-sample trios cohort vs. under 1 second for PLINK.
+**GERMLINE** detects IBD segments with full position and length information. Both tools achieve comparable accuracy when thresholds are calibrated appropriately, but GERMLINE's built-in thresholds assume whole-genome input and fail on single-chromosome data (F1=0.01). Using proportion-based thresholds instead (total shared IBD as a fraction of chromosome length) recovers near-perfect accuracy (F1~0.989). This is a useful finding -- anyone running GERMLINE on a subset of chromosomes needs to adjust their classification thresholds accordingly. GERMLINE is also substantially slower, around 28 minutes for the 1,793-sample trios cohort vs. under 1 second for PLINK.
 
 **Runtime comparison (default parameters):**
 
@@ -34,43 +34,8 @@ The analysis is limited to chromosome 22 for computational tractability.
 | Tool | Precision | Recall | F1 |
 |------|-----------|--------|----|
 | PLINK (Z0/Z1/Z2 thresholds) | 0.987 | 1.000 | 0.993 |
-| GERMLINE (proportion-based, chr22) | ~0.99 | ~0.988 | ~0.989 |
-| GERMLINE (whole-genome thresholds) | 0.353 | 0.005 | 0.010 |
-
-The key methodological takeaway: GERMLINE's default classification thresholds assume whole-genome input. On chr22 alone (~2% of the genome), expected IBD lengths are proportionally smaller, so those thresholds don't work.
-
-## Project Structure
-
-```
-.
-|-- data/
-|   |-- raw/                    # raw 1000 Genomes VCFs
-|   |-- processed/              # population-filtered, LD-pruned files
-|   `-- reference/              # pedigree, population panel, genetic maps
-|-- notebooks/
-|   `-- ibd_benchmarking_analysis.ipynb   # main analysis notebook
-|-- scripts/
-|   |-- preprocessing/
-|   |   |-- download_data.sh            # download 1000 Genomes data
-|   |   |-- preprocess.sh               # filter, convert, LD-prune
-|   |   |-- vcf_to_germline_ped.py      # phase-preserving VCF->PED converter
-|   |   `-- vcf_to_germline_fast.py     # faster two-pass version
-|   `-- analysis/
-|       |-- run_plink_ibd.sh                    # PLINK --genome + parameter sweeps
-|       |-- run_germline_ibd.sh                 # GERMLINE + parameter sweeps
-|       |-- classify_plink_relationships.py     # IBD -> relationship classifier
-|       |-- classify_germline_relationships.py  # segment -> relationship classifier
-|       `-- compare_tools.py                    # head-to-head comparison + figures
-|-- results/
-|   |-- plink/                  # PLINK .genome outputs + benchmarks
-|   |-- germline/               # GERMLINE .match outputs + benchmarks
-|   |-- comparison/             # cross-tool comparison results
-|   `-- figures/                # generated plots
-|-- tools/                      # PLINK and GERMLINE binaries
-|-- run_all.sh                  # master pipeline script
-|-- requirements.txt
-`-- README.md
-```
+| GERMLINE (proportion-based) | ~0.99 | ~0.988 | ~0.989 |
+| GERMLINE (default whole-genome thresholds) | 0.353 | 0.005 | 0.010 |
 
 ## Dependencies
 
@@ -202,7 +167,7 @@ Seed-and-extend hashing algorithm for detecting shared IBD segments. Outputs seg
 
 Things I still want to get to in the last week, and stuff I'd appreciate feedback on:
 
-- **Extend beyond chr22.** Right now everything is single-chromosome, which is the biggest limitation. GERMLINE's thresholds were designed for whole-genome data, and running on just chr22 (~2% of the genome) makes their default classification basically useless. I want to at least try chr1 + chr22 together to see if the thresholds start working better.
+- **Multi-chromosome run.** It would be nice to add at least one more chromosome (maybe chr1) to confirm that the proportion-based GERMLINE thresholds generalize, and to see if GERMLINE's default whole-genome thresholds start working when you give it more data.
 - **Sibling detection.** The ground truth only has parent-child relationships (from the 1000 Genomes trios), so I can't really validate sibling or second-degree detection yet. I'm not sure where to get reliable ground truth for those -- would appreciate suggestions.
 - **GERMLINE VCF-to-PED speed.** The conversion for the trios cohort (1793 samples) takes ~2 hours with my Python script. There's probably a faster way to do this, maybe with bcftools directly or by chunking the VCF.
 - **Better parameter sweep analysis.** I swept min-segment-length and mismatch tolerance for both tools, but haven't done a proper grid search or plotted ROC curves yet. The current parameter sweep plots are kind of basic.
