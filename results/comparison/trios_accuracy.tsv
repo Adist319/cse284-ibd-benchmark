@@ -1,0 +1,13 @@
+tool	relationship	true_positives	false_positives	false_negatives	precision	recall	f1
+PLINK	second-degree	0	54639	0	0.0	0.0	0.0
+PLINK	parent-child	1204	16	0	0.987	1.0	0.993
+PLINK	unrelated	1265555	0	339769	1.0	0.788	0.882
+PLINK	third-degree	0	285075	0	0.0	0.0	0.0
+PLINK	full-sibling	0	37	0	0.0	0.0	0.0
+PLINK	duplicate	0	2	0	0.0	0.0	0.0
+GERMLINE	full-sibling	0	897	0	0.0	0.0	0.0
+GERMLINE	duplicate	0	345	0	0.0	0.0	0.0
+GERMLINE	third-degree	0	587	0	0.0	0.0	0.0
+GERMLINE	unrelated	502	0	879	1.0	0.364	0.533
+GERMLINE	second-degree	0	237	0	0.0	0.0	0.0
+GERMLINE	parent-child	6	11	1198	0.353	0.005	0.01

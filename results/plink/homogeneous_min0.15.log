@@ -1,0 +1,27 @@
+PLINK v1.90b7.1 64-bit (18 Oct 2023)
+Options in effect:
+  --allow-extra-chr
+  --bfile /Users/adrianong/Documents/cse284/data/processed/homogeneous_chr22_pruned
+  --genome
+  --min 0.15
+  --out /Users/adrianong/Documents/cse284/results/plink/homogeneous_min0.15
+
+Hostname: Mac.attlocal.net
+Working directory: /Users/adrianong/Documents/cse284
+Start time: Fri Feb 27 17:07:19 2026
+
+Random number seed: 1772240839
+16384 MB RAM detected; reserving 8192 MB for main workspace.
+6865 variants loaded from .bim file.
+297 people (148 males, 149 females) loaded from .fam.
+Using up to 9 threads (change this with --threads).
+Before main variant filters, 297 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is exactly 1.
+6865 variants and 297 people pass filters and QC.
+Note: No phenotypes present.
+IBD calculations complete.
+Finished writing
+/Users/adrianong/Documents/cse284/results/plink/homogeneous_min0.15.genome .
+
+End time: Fri Feb 27 17:07:19 2026

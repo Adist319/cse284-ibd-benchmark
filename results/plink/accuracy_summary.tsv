@@ -1,0 +1,7 @@
+cohort	relationship	precision	recall	f1	tp	fp	fn
+trios	identical_twin	0.0	0.0	0.0	0	0	0
+trios	parent_child	1.0	0.8547	0.9216	1029	0	175
+trios	full_sibling	0.0	0.0	0.0	0	18	0
+trios	second_degree	0.0	0.0	0.0	0	0	0
+trios	third_degree	0.0	0.0	0.0	0	0	0
+trios	unrelated	0.0	0.0	0.0	0	157	0

@@ -1,0 +1,52 @@
+# Raw data (download via scripts/preprocessing/download_data.sh)
+data/raw/
+
+# Large processed files (regenerable via preprocessing)
+data/processed/*.bed
+data/processed/*.bim
+data/processed/*.fam
+data/processed/*.log
+data/processed/*.nosex
+data/processed/*.vcf.gz
+data/processed/*.vcf.gz.tbi
+data/processed/*.ped
+data/processed/*.map
+data/processed/*.prune.*
+
+# Large reference files (downloadable)
+data/reference/plink.GRCh38.map.zip
+data/reference/chr_in_chrom_field/
+data/reference/no_chr_in_chrom_field/
+
+# PLINK raw outputs (large, regenerable)
+*.genome
+results/plink/*_classified.tsv
+
+# Large comparison files (regenerable)
+results/comparison/*_merged_comparison.tsv
+
+# GERMLINE match files
+*.match
+
+# Tool binaries (download/compile via install scripts)
+tools/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.egg-info/
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Academic deliverables
+report.tex
+presentation_script.md
+docs/
