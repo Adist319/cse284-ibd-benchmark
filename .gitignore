@@ -28,6 +28,11 @@ results/comparison/*_merged_comparison.tsv
 # GERMLINE match files
 *.match
 
+# Tool logs (regenerable, just boilerplate)
+results/plink/*.log
+results/germline/*.log
+results/germline/*_time.txt
+
 # Tool binaries (download/compile via install scripts)
 tools/
 
