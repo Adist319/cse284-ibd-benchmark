@@ -1,2 +1,2 @@
-cohort	total_pairs	total_segments	pairs_evaluated	accuracy
-homogeneous	39	55	0	
+cohort	total_pairs	total_segments	pairs_evaluated	correct	accuracy	accuracy_parent-child	n_parent-child
+trios	2548	10590	1204	23	0.0191	0.0191	1204

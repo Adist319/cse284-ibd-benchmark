@@ -6,20 +6,20 @@
 
 This project benchmarks two widely-used Identity by Descent (IBD) detection tools - **PLINK** (`--genome`) and **GERMLINE** - for identifying genetic relatives in diverse human populations.
 
-We use the [1000 Genomes Project 30x high-coverage dataset](https://www.internationalgenome.org/data-portal/data-collection/30x-grch38) (3,202 samples including 602 confirmed parent-child trios) to evaluate:
+I used the [1000 Genomes Project 30x high-coverage dataset](https://www.internationalgenome.org/data-portal/data-collection/30x-grch38) (3,202 samples including 602 confirmed parent-child trios) to evaluate:
 
 - IBD detection accuracy against 1,204 known parent-child relationships
 - Computational performance (runtime, peak memory) across cohort sizes
 - Parameter sensitivity (minimum segment length, mismatch tolerance, PI_HAT thresholds)
 - Population structure effects comparing admixed vs. homogeneous cohorts
 
-The analysis uses chromosome 22 for computational tractability. PLINK's method-of-moments estimator works on any subset of SNPs, and GERMLINE's segment detection is per-chromosome anyway, so chr22 is a reasonable testbed for both tools.
+The analysis uses chromosome 22. PLINK's method-of-moments estimator works on any subset of SNPs, and GERMLINE's segment detection is per-chromosome anyway, so chr22 is a reasonable testbed for both tools.
 
 ## Key Findings
 
-**PLINK** is extremely fast (< 1 second for most cohorts) and classifies parent-child relationships with near-perfect accuracy on the trios cohort (precision=0.987, recall=1.0, F1=0.993). It only outputs summary IBD statistics (PI_HAT, Z0/Z1/Z2) -- no segment-level information.
+**PLINK** is extremely fast (< 1 second for most cohorts) and classifies parent-child relationships with near-perfect accuracy on the trios cohort (precision=0.980, recall=1.0, F1=0.990). It only outputs summary IBD statistics (PI_HAT, Z0/Z1/Z2) -- no segment-level information.
 
-**GERMLINE** detects IBD segments with full position and length information. Both tools achieve comparable accuracy when thresholds are calibrated appropriately, but GERMLINE's built-in thresholds assume whole-genome input and fail on single-chromosome data (F1=0.01). Using proportion-based thresholds instead (total shared IBD as a fraction of chromosome length) recovers near-perfect accuracy (F1~0.989). This is a useful finding -- anyone running GERMLINE on a subset of chromosomes needs to adjust their classification thresholds accordingly. GERMLINE is also substantially slower, around 28 minutes for the 1,793-sample trios cohort vs. under 1 second for PLINK.
+**GERMLINE** detects IBD segments with full position and length information. Both tools achieve comparable accuracy when thresholds are calibrated appropriately, but GERMLINE's built-in thresholds assume whole-genome input and fail on single-chromosome data (recall=1.9%, F1=0.037). Using proportion-based thresholds instead (total shared IBD as a fraction of chromosome length) recovers strong accuracy (F1=0.966). This is a useful finding -- anyone running GERMLINE on a subset of chromosomes needs to adjust their classification thresholds accordingly. GERMLINE is also substantially slower, around 28 minutes for the 1,793-sample trios cohort vs. under 1 second for PLINK.
 
 **Runtime comparison (default parameters):**
 
@@ -29,13 +29,23 @@ The analysis uses chromosome 22 for computational tractability. PLINK's method-o
 | Homogeneous | 297 | 0.07 sec | 12 sec | ~170x |
 | Trios | 1,793 | 0.90 sec | 1,677 sec | ~1,860x |
 
+![Runtime and memory benchmarks](results/figures/benchmarks_comparison.png)
+
 **Accuracy on known parent-child pairs (trios cohort):**
 
 | Tool | Precision | Recall | F1 |
 |------|-----------|--------|----|
-| PLINK (Z0/Z1/Z2 thresholds) | 0.987 | 1.000 | 0.993 |
-| GERMLINE (proportion-based) | ~0.99 | ~0.988 | ~0.989 |
-| GERMLINE (default whole-genome thresholds) | 0.353 | 0.005 | 0.010 |
+| PLINK (Z0/Z1/Z2 thresholds) | 0.980 | 1.000 | 0.990 |
+| GERMLINE (proportion-based, threshold=0.40) | 0.946 | 0.988 | 0.966 |
+| GERMLINE (default segment-count thresholds) | 0.885 | 0.019 | 0.037 |
+
+GERMLINE's default segment-count thresholds (designed for whole-genome data) misclassify nearly all parent-child pairs as siblings on single-chromosome data. Switching to proportion-based thresholds recovers near-perfect accuracy:
+
+![GERMLINE classifier comparison](results/figures/fair_comparison_classifiers.png)
+
+PLINK's Z0/Z1 scatter plot shows clean separation of relationship classes on the trios cohort:
+
+![Z0 vs Z1 relationship classification](results/figures/trios_z0_z1_scatter.png)
 
 ## Dependencies
 
@@ -82,45 +92,55 @@ For Linux, replace the macOS PLINK URLs with the appropriate Linux builds from [
 bash run_all.sh
 ```
 
-Or run individual steps:
+Or run individual steps (all commands assume you're in the project root):
 
 ```bash
 bash scripts/preprocessing/download_data.sh   # download chr22 VCF + pedigree
 bash scripts/preprocessing/preprocess.sh       # filter, LD-prune, split cohorts
 bash scripts/analysis/run_plink_ibd.sh         # PLINK IBD + parameter sweep
 bash scripts/analysis/run_germline_ibd.sh      # GERMLINE IBD + parameter sweep
-python scripts/analysis/classify_plink_relationships.py --cohort trios
-python scripts/analysis/classify_germline_relationships.py --cohort trios
-python scripts/analysis/compare_tools.py --cohort trios
+python scripts/analysis/classify_plink_relationships.py --cohorts trios
+python scripts/analysis/classify_germline_relationships.py \
+    --match-files trios:results/germline/trios_default.match \
+    --known data/processed/known_relationships.tsv \
+    --output-dir results/germline
+python scripts/analysis/compare_tools.py \
+    --cohort trios \
+    --plink-genome results/plink/trios_default.genome \
+    --germline-match results/germline/trios_default.match \
+    --known-rels data/processed/known_relationships.tsv
 ```
 
 Note: the GERMLINE VCF-to-PED conversion for the trios cohort (1,793 samples) takes roughly 2 hours. The admixed and homogeneous cohorts take about 5-10 minutes each.
 
 ## Quick Test Example
 
-To run a quick test on the homogeneous cohort (smallest, ~297 samples). This assumes you've already run the preprocessing and IBD steps (or are using precomputed results):
+To verify the pipeline works, run the full pipeline with `bash run_all.sh`. For the fastest result, the homogeneous cohort (~297 samples) finishes in under 10 minutes total.
+
+If you already have results from a prior run, you can test the classification scripts directly (all commands must be run from the project root):
 
 ```bash
 source .venv/bin/activate
 
-# classify PLINK relationships for the homogeneous cohort
+# classify PLINK relationships for the trios cohort
 python scripts/analysis/classify_plink_relationships.py \
-    --cohorts homogeneous \
+    --cohorts trios \
     --suffix default
 
 # view the classified pairs (each row is a pair with predicted relationship)
-head -5 results/plink/homogeneous_classified.tsv
+head -5 results/plink/trios_classified.tsv
 ```
 
 For GERMLINE on the same cohort:
 
 ```bash
 python scripts/analysis/classify_germline_relationships.py \
-    --match-files homogeneous:results/germline/homogeneous_default.match \
+    --match-files trios:results/germline/trios_default.match \
+    --known data/processed/known_relationships.tsv \
     --output-dir results/germline/
 
-# view segment-level output
-cat results/germline/homogeneous_pairs_summary.tsv | head -10
+# view per-pair IBD summary (total shared cM, segment count, classification)
+head -10 results/germline/trios_pairs_summary.tsv
 ```
 
 Note: the `run_plink_ibd.sh` and `run_germline_ibd.sh` scripts run all three cohorts together and rewrite the benchmarks file, so run them as part of the full pipeline rather than individually.
@@ -163,15 +183,42 @@ Seed-and-extend hashing algorithm for detecting shared IBD segments. Outputs seg
 
 **GERMLINE** - for chr22 specifically, use proportion-based thresholds (total IBD / 55 cM expected for parent-child on chr22). Fixed segment-length thresholds designed for whole-genome data will not work on a single chromosome.
 
-## Remaining Work and Open Questions
+## Troubleshooting
 
-Things I still want to get to in the last week, and stuff I'd appreciate feedback on:
+**`bcftools: command not found`**
 
-- **Multi-chromosome run.** It would be nice to add at least one more chromosome (maybe chr1) to confirm that the proportion-based GERMLINE thresholds generalize, and to see if GERMLINE's default whole-genome thresholds start working when you give it more data.
-- **Sibling detection.** The ground truth only has parent-child relationships (from the 1000 Genomes trios), so I can't really validate sibling or second-degree detection yet. I'm not sure where to get reliable ground truth for those -- would appreciate suggestions.
-- **GERMLINE VCF-to-PED speed.** The conversion for the trios cohort (1793 samples) takes ~2 hours with my Python script. There's probably a faster way to do this, maybe with bcftools directly or by chunking the VCF.
-- **Better parameter sweep analysis.** I swept min-segment-length and mismatch tolerance for both tools, but haven't done a proper grid search or plotted ROC curves yet. The current parameter sweep plots are kind of basic.
-- **KING comparison.** A few people have mentioned KING as another IBD tool worth benchmarking. Haven't had time to set it up yet but it would round out the comparison.
+```bash
+# macOS
+brew install bcftools
+
+# conda
+conda install -c bioconda bcftools
+```
+
+**GERMLINE fails to compile (`make all` errors)**
+
+Make sure you have a C++ compiler installed. On macOS, run `xcode-select --install` if you haven't already. If you get linker errors, try:
+```bash
+cd tools/germline
+make clean
+make all
+```
+
+**`download_data.sh` fails with permission or network errors**
+
+The 1000 Genomes FTP server can be slow. If `curl` times out, re-run the script -- it skips files that already exist. The chr22 VCF is ~300 MB.
+
+**GERMLINE VCF-to-PED conversion is very slow**
+
+This is expected for the trios cohort (1,793 samples x ~106K variants). It takes roughly 2 hours. The admixed and homogeneous cohorts finish in 5-10 minutes. If you just want to verify the pipeline works, run the homogeneous cohort first (smallest).
+
+**Python import errors**
+
+Make sure you activated the virtual environment and installed dependencies:
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## References
 

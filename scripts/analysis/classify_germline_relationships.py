@@ -14,13 +14,14 @@ MATCH_COLS = [
 
 CHR22_CM = 55.0
 
-# thresholds calibrated for chr22 only, won't generalize
-# originally had full_sibling min at 25 but that missed too many
+# segment-count thresholds calibrated for whole-genome data
+# these DON'T work well on single-chromosome data (see notebook section 4.3)
+# because parent-child pairs average ~7 segments on chr22, exceeding max_segments
 THRESHOLDS = {
-    'parent_child': {'min_ibd_cm': 33.0, 'max_segments': 4},
-    'full_sibling': {'min_ibd_cm': 20.0, 'max_segments': 10},
-    'second_degree': {'min_ibd_cm': 10.0},
-    'third_degree': {'min_ibd_cm': 5.0},
+    'parent-child': {'min_ibd_cm': 33.0, 'max_segments': 4},
+    'full-sibling': {'min_ibd_cm': 20.0, 'max_segments': 10},
+    'second-degree': {'min_ibd_cm': 10.0},
+    'third-degree': {'min_ibd_cm': 5.0},
 }
 
 
@@ -46,6 +47,9 @@ def aggregate_pairs(df):
     df['fid1'] = df['fid1'].str.replace(r'\.\d+$', '', regex=True)
     df['fid2'] = df['fid2'].str.replace(r'\.\d+$', '', regex=True)
 
+    # drop self-pairs (germline -haploid can match an individual with itself)
+    df = df[df['iid1'] != df['iid2']]
+
     # canonicalize so pair order is consistent
     mask = df['iid1'] > df['iid2']
     df.loc[mask, ['fid1', 'iid1', 'fid2', 'iid2']] = df.loc[mask, ['fid2', 'iid2', 'fid1', 'iid1']].values
@@ -64,17 +68,17 @@ def classify_rel(row):
     total = row['total_ibd_cm']
     n_seg = row['num_segments']
 
-    if total >= THRESHOLDS['parent_child']['min_ibd_cm']:
+    if total >= THRESHOLDS['parent-child']['min_ibd_cm']:
         # parent-child = few long segments vs siblings = more from recombination
-        if n_seg <= THRESHOLDS['parent_child']['max_segments']:
+        if n_seg <= THRESHOLDS['parent-child']['max_segments']:
             return 'parent-child'
         return 'full-sibling'
 
-    if total >= THRESHOLDS['full_sibling']['min_ibd_cm']:
+    if total >= THRESHOLDS['full-sibling']['min_ibd_cm']:
         return 'full-sibling'
-    if total >= THRESHOLDS['second_degree']['min_ibd_cm']:
+    if total >= THRESHOLDS['second-degree']['min_ibd_cm']:
         return 'second-degree'
-    if total >= THRESHOLDS['third_degree']['min_ibd_cm']:
+    if total >= THRESHOLDS['third-degree']['min_ibd_cm']:
         return 'third-degree'
     return 'unrelated'
 

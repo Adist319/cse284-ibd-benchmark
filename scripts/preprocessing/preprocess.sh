@@ -475,6 +475,7 @@ if [ "${SKIP_GERMLINE}" = true ]; then
 fi
 
 CONVERTER="${SCRIPTS_DIR}/vcf_to_germline_ped.py"
+if [ ! -f "${CONVERTER}" ]; then
 cat > "${CONVERTER}" << 'PYTHON_CONVERTER'
 #!/usr/bin/env python3
 """Convert phased VCF to GERMLINE PED/MAP format."""
@@ -640,8 +641,8 @@ def main():
 if __name__ == '__main__':
     main()
 PYTHON_CONVERTER
-
 chmod +x "${CONVERTER}"
+fi
 
 for cohort in admixed homogeneous trios; do
     CVCF="${PROC_DIR}/${cohort}_chr22.vcf.gz"

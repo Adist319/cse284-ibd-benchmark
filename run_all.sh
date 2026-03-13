@@ -30,8 +30,20 @@ echo "running GERMLINE IBD..."
 bash "$ROOT/scripts/analysis/run_germline_ibd.sh"
 echo
 
-echo "classifying germline segments..."
+if [ ! -f "$ROOT/.venv/bin/activate" ]; then
+    echo "ERROR: Python venv not found. Run: python3 -m venv .venv && pip install -r requirements.txt"
+    exit 1
+fi
 source "$ROOT/.venv/bin/activate"
+
+echo "classifying PLINK relationships..."
+python3 "$ROOT/scripts/analysis/classify_plink_relationships.py" \
+    --results-dir "$ROOT/results/plink" \
+    --known-relationships "$ROOT/data/processed/known_relationships.tsv" \
+    --cohorts trios admixed homogeneous
+echo ""
+
+echo "classifying GERMLINE segments..."
 
 MATCH_ARGS=""
 for cohort in trios admixed homogeneous; do

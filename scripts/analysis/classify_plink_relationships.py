@@ -16,15 +16,16 @@ REL_TYPES = [
 
 def classify_rel(row):
     pi_hat = row["PI_HAT"]
-    z1 = row["Z1"]
+    z0 = row["Z0"]
     z2 = row["Z2"]
 
-    # used to threshold at 0.20 but 0.17 works better empirically
+    # thresholds based on Manichaikul et al. 2010, Z0 cutoff empirically
+    # adjusted for chr22
     if pi_hat > 0.9:
         return "identical_twin"
-    if pi_hat > 0.4 and z1 > 0.8:
+    if pi_hat > 0.4 and z0 < 0.15:
         return "parent_child"
-    if pi_hat > 0.35 and 0.4 < z1 < 0.7 and z2 > 0.1:
+    if pi_hat > 0.35 and z2 > 0.1:
         return "full_sibling"
     if 0.17 < pi_hat < 0.35:
         return "second_degree"
@@ -103,31 +104,28 @@ def evaluate_accuracy(classified_df, known_df):
     c["IID1_norm"] = c.apply(lambda r: min(str(r["IID1"]), str(r["IID2"])), axis=1)
     c["IID2_norm"] = c.apply(lambda r: max(str(r["IID1"]), str(r["IID2"])), axis=1)
 
-    # merge on IID
-    merged = c.merge(
-        known_df,
-        left_on=["IID1_norm", "IID2_norm"],
-        right_on=["IID1", "IID2"],
-        how="inner",
-        suffixes=("", "_known"),
-    )
-    # print(merged.head())
+    # build set of known pairs by relationship
+    known_by_rel = {}
+    for _, row in known_df.iterrows():
+        rel = normalize_rel(row["known_relationship"])
+        pair = (row["IID1"], row["IID2"])
+        known_by_rel.setdefault(rel, set()).add(pair)
 
-    if merged.empty:
-        print("WARNING: No overlapping pairs found with ground truth")
-        return pd.DataFrame(
-            columns=["relationship", "precision", "recall", "f1", "tp", "fp", "fn"]
-        )
+    # build set of predicted pairs by relationship
+    pred_by_rel = {}
+    for _, row in c.iterrows():
+        rel = row["predicted_relationship"]
+        pair = (row["IID1_norm"], row["IID2_norm"])
+        pred_by_rel.setdefault(rel, set()).add(pair)
 
     res = []
-    all_known = known_df["known_relationship"].apply(normalize_rel)
-    all_pred = merged["predicted_relationship"]
-    all_true = merged["known_relationship"].apply(normalize_rel)
-
     for rel in REL_TYPES:
-        tp = ((all_pred == rel) & (all_true == rel)).sum()
-        fp = ((all_pred == rel) & (all_true != rel)).sum()
-        fn = ((all_pred != rel) & (all_true == rel)).sum()
+        known_set = known_by_rel.get(rel, set())
+        pred_set = pred_by_rel.get(rel, set())
+
+        tp = len(pred_set & known_set)
+        fp = len(pred_set - known_set)
+        fn = len(known_set - pred_set)
 
         prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0

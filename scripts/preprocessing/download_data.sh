@@ -1,8 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-DATA_DIR="$(cd "$(dirname "$0")/../../data/raw" && pwd)"
-REF_DIR="$(cd "$(dirname "$0")/../../data/reference" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+DATA_DIR="${PROJECT_DIR}/data/raw"
+REF_DIR="${PROJECT_DIR}/data/reference"
 mkdir -p "$DATA_DIR" "$REF_DIR"
 
 BASE_URL="http://ftp.1000genomes.ebi.ac.uk/vol1/ftp"

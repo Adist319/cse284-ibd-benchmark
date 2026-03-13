@@ -35,6 +35,9 @@ def load_germline_matches(path):
     df['IID1'] = df['IID1'].astype(str).str.replace(r'\.\d+$', '', regex=True)
     df['IID2'] = df['IID2'].astype(str).str.replace(r'\.\d+$', '', regex=True)
 
+    # drop self-pairs (germline -haploid can match an individual with itself)
+    df = df[df['IID1'] != df['IID2']]
+
     # canonicalize pair order so (A,B) == (B,A)
     mask = df['IID1'] > df['IID2']
     df.loc[mask, ['IID1', 'IID2']] = df.loc[mask, ['IID2', 'IID1']].values
@@ -81,7 +84,7 @@ def classify_plink_rel(row):
         return 'duplicate'
     elif pi_hat > 0.4:
         # parent-child has z0 ~ 0, siblings have z0 ~ 0.25
-        if z0 < 0.1:
+        if z0 < 0.15:
             return 'parent-child'
         else:
             return 'full-sibling'
@@ -100,14 +103,12 @@ def classify_germline_rel(row, chr22_cm=55.0):
     max_seg = row['max_segment_cm']
     prop = total / chr22_cm  # 55 cM for chr22
 
-    if prop > 0.9:
-        return 'duplicate'
-    elif prop > 0.40:
-        # parent-child = few long segments, sibs = many shorter
-        if n_seg <= 3 and max_seg > 15:
-            return 'parent-child'
-        else:
-            return 'full-sibling'
+    if prop > 0.40:
+        # proportion-based: on chr22, parent-child pairs routinely share
+        # >90% of the chromosome, so no duplicate cutoff makes sense here.
+        # can't reliably distinguish PC from sibs by segment count either
+        # (parent-child avg ~7 segments on chr22), so classify by proportion alone
+        return 'parent-child'
     elif prop > 0.15:
         return 'second-degree'
     elif prop > 0.07:
